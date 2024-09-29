@@ -127,7 +127,7 @@ impl AppState {
 
 #[cfg(test)]
 impl CreateChat {
-    pub fn new(name: &str,  members: &[i64], public: bool) -> Self {
+    pub fn new(name: &str, members: &[i64], public: bool) -> Self {
         let name = if name.is_empty() {
             None
         } else {
