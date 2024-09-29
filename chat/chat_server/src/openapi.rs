@@ -10,7 +10,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use crate::handlers::*;
 use crate::{
-    errror::ErrorOutput,
+    error::ErrorOutput,
     handlers::AuthOutput,
     models::{CreateChat, CreateMessage, CreateUser, ListMessages, SigninUser},
     AppState,

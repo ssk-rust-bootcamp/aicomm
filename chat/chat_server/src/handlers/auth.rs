@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
-    errror::{AppError, ErrorOutput},
+    error::{AppError, ErrorOutput},
     models::{CreateUser, SigninUser},
     AppState,
 };

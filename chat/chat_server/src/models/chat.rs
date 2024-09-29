@@ -2,7 +2,7 @@ use chat_core::{Chat, ChatType};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::{errror::AppError, AppState};
+use crate::{error::AppError, AppState};
 
 #[derive(Debug, Clone, Default, ToSchema, Serialize, Deserialize)]
 pub struct CreateChat {
@@ -125,12 +125,19 @@ impl AppState {
     }
 }
 
-
 #[cfg(test)]
 impl CreateChat {
-    pub fn new(name:&str,members:Vec<i64>,public:bool)->Self{
-        let name = if name.is_empty() { None } else { Some(name.to_string()) };
-        Self { name, members:members.to_vec(), public }
+    pub fn new(name: &str,  members: &[i64], public: bool) -> Self {
+        let name = if name.is_empty() {
+            None
+        } else {
+            Some(name.to_string())
+        };
+        Self {
+            name,
+            members: members.to_vec(),
+            public,
+        }
     }
 }
 #[cfg(test)]
@@ -138,14 +145,17 @@ mod tests {
     use super::*;
     use anyhow::Result;
 
-    #[tokio::test]  
+    #[tokio::test]
     async fn create_single_chat_should_work() -> Result<()> {
-        let (_tdb,state) = AppState::new_for_test().await?;
-        let input = CreateChat::new("",&[1,2], false);
-        let chat = state.crate_chat(input, 1, 1).await.expect("create chat failed");
-        assert_eq!(chat.ws_id,1);
-        assert_eq!(chat.members.len(),2);
-        assert_eq!(chat.r#type,ChatType::Single);
+        let (_tdb, state) = AppState::new_for_test().await?;
+        let input = CreateChat::new("", &[1, 2], false);
+        let chat = state
+            .create_chat(input, 1, 1)
+            .await
+            .expect("create chat failed");
+        assert_eq!(chat.ws_id, 1);
+        assert_eq!(chat.members.len(), 2);
+        assert_eq!(chat.r#type, ChatType::Single);
         Ok(())
     }
     #[tokio::test]

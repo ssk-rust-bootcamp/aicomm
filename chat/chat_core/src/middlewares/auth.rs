@@ -13,7 +13,6 @@ use tracing::warn;
 
 use super::TokenVerify;
 
-
 #[derive(Debug, Deserialize)]
 struct Params {
     token: String,

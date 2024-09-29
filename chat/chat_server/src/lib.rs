@@ -1,23 +1,34 @@
 mod config;
-mod errror;
+mod error;
 mod handlers;
+mod middlewares;
 mod models;
 mod openapi;
-mod  middlewares;
-use std::{fmt, ops::Deref, sync::Arc};
 
 use anyhow::Context;
-use axum::{http::Method, middleware::from_fn_with_state, routing::{get, post}, Router};
-use chat_core::{middlewares::{set_layer, TokenVerify}, DecodingKey, EncodingKey, User};
-pub use config::AppConfig;
-use errror::AppError;
+use chat_core::{
+    middlewares::{set_layer, verify_token, TokenVerify},
+    DecodingKey, EncodingKey, User,
+};
 use handlers::*;
 use middlewares::verify_chat;
 use openapi::OpenApiRouter;
 use sqlx::PgPool;
+use std::{fmt, ops::Deref, sync::Arc};
 use tokio::fs;
 use tower_http::cors::{self, CorsLayer};
-use chat_core::middlewares::verify_token;
+
+pub use error::{AppError, ErrorOutput};
+pub use models::*;
+
+use axum::{
+    http::Method,
+    middleware::from_fn_with_state,
+    routing::{get, post},
+    Router,
+};
+
+pub use config::AppConfig;
 
 #[derive(Debug, Clone)]
 pub struct AppState {
@@ -73,50 +84,49 @@ impl AppState {
     }
 }
 
-pub async fn get_router(state:AppState)->Result<Router,AppError>{
+pub async fn get_router(state: AppState) -> Result<Router, AppError> {
     let chat = Router::new()
-    .route(
-        "/:id",
-        get(get_chat_handler)
-            .patch(update_chat_handler)
-            .delete(delete_chat_handler)
-            .post(send_message_handler),
-    )
-    .route("/:id/messages", get(list_message_handler))
-    .layer(from_fn_with_state(state.clone(), verify_chat))
-    .route("/", get(list_chat_handler).post(create_chat_handler));
+        .route(
+            "/:id",
+            get(get_chat_handler)
+                .patch(update_chat_handler)
+                .delete(delete_chat_handler)
+                .post(send_message_handler),
+        )
+        // .route("/:id/messages", get(list_message_handler))
+        .layer(from_fn_with_state(state.clone(), verify_chat))
+        .route("/", get(list_chat_handler).post(create_chat_handler));
 
-let cors = CorsLayer::new()
-    // allow `GET` and `POST` when accessing the resource
-    .allow_methods([
-        Method::GET,
-        Method::POST,
-        Method::PATCH,
-        Method::DELETE,
-        Method::PUT,
-    ])
-    .allow_origin(cors::Any)
-    .allow_headers(cors::Any);
-let api = Router::new()
-    .route("/users", get(list_chat_users_handler))
-    .nest("/chats", chat)
-    .route("/upload", post(upload_handler))
-    .route("/files/:ws_id/*path", get(file_handler))
-    .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
-    // routes doesn't need token verification
-    .route("/signin", post(signin_handler))
-    .route("/signup", post(signup_handler))
-    .layer(cors);
+    let cors = CorsLayer::new()
+        // allow `GET` and `POST` when accessing the resource
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PATCH,
+            Method::DELETE,
+            Method::PUT,
+        ])
+        .allow_origin(cors::Any)
+        .allow_headers(cors::Any);
+    let api = Router::new()
+        // .route("/users", get(list_chat_users_handler))
+        .nest("/chats", chat)
+        // .route("/upload", post(upload_handler))
+        // .route("/files/:ws_id/*path", get(file_handler))
+        .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
+        // routes doesn't need token verification
+        .route("/signin", post(signin_handler))
+        .route("/signup", post(signup_handler))
+        .layer(cors);
 
-let app = Router::new()
-    .openapi()
-    .route("/", get(index_handler))
-    .nest("/api", api)
-    .with_state(state);
+    let app = Router::new()
+        .openapi()
+        .route("/", get(index_handler))
+        .nest("/api", api)
+        .with_state(state);
 
-Ok(set_layer(app))
+    Ok(set_layer(app))
 }
-
 
 #[cfg(feature = "test-util")]
 mod test_util {

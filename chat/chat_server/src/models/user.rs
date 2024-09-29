@@ -10,7 +10,7 @@ use chat_core::User;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::{errror::AppError, AppState};
+use crate::{error::AppError, AppState};
 
 /// create a user with email and password
 #[derive(Debug, Clone, ToSchema, Serialize, Deserialize)]
