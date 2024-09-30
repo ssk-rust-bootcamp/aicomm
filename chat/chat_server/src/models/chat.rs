@@ -65,9 +65,9 @@ impl AppState {
         };
         let chat = sqlx::query_as(
             r#"
-            INSERT INTO chats (ws_id,name,type,member) 
+            INSERT INTO chats (ws_id,name,type,members) 
             VALUES ($1, $2, $3, $4) 
-            RETURNING id,ws_id,name,type,member,created_at
+            RETURNING id,ws_id,name,type,members,created_at
             "#,
         )
         .bind(ws_id as i64)
@@ -83,11 +83,9 @@ impl AppState {
     pub async fn fetch_chats(&self, user_id: u64, ws_id: u64) -> Result<Vec<Chat>, AppError> {
         let chats = sqlx::query_as(
             r#"
-            SELECT id,ws_id,name,type,members,created_at
+            SELECT id, ws_id, name, type, members, created_at
             FROM chats
-            WHERE ws_id = $1
-            AND &2 = ANY(members)
-            ORDER BY created_at DESC
+            WHERE ws_id = $1 AND $2 = ANY(members)
             "#,
         )
         .bind(ws_id as i64)
@@ -111,17 +109,16 @@ impl AppState {
         Ok(chat)
     }
     pub async fn is_chat_member(&self, chat_id: u64, user_id: u64) -> Result<bool, AppError> {
-        // let is_member = sqlx::query_as(
-        //     r#"
-        //     SELECT 1 FROM chats where id = $1 AND $2 = ANY(members)
-        //     "#,
-        // )
-        // .bind(chat_id as i64)
-        // .bind(user_id as i64)
-        // .fetch_optional(&self.pool)
-        // .await?;
-        // Ok(is_member.is_some())
-        todo!()
+        let is_member: Option<()> = sqlx::query_as(
+            r#"
+            SELECT 1 FROM chats where id = $1 AND $2 = ANY(members)
+            "#,
+        )
+        .bind(chat_id as i64)
+        .bind(user_id as i64)
+        .fetch_optional(&self.pool)
+        .await?;
+        Ok(is_member.is_some())
     }
 }
 

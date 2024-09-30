@@ -6,6 +6,7 @@ use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
     Argon2, PasswordHash,
 };
+use chat_core::ChatUser;
 use chat_core::User;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -125,6 +126,20 @@ impl AppState {
             "select id,ws_id,fullname,email,created_at from users where id = any($1)",
         )
         .bind(ids)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(users)
+    }
+
+    pub async fn fetch_chat_users(&self, ws_id: u64) -> Result<Vec<ChatUser>, AppError> {
+        let users = sqlx::query_as(
+            r#"
+        SELECT id, fullname, email
+        FROM users
+        WHERE ws_id = $1
+        "#,
+        )
+        .bind(ws_id as i64)
         .fetch_all(&self.pool)
         .await?;
         Ok(users)

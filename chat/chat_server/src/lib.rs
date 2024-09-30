@@ -93,7 +93,7 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
                 .delete(delete_chat_handler)
                 .post(send_message_handler),
         )
-        // .route("/:id/messages", get(list_message_handler))
+        .route("/:id/messages", get(list_message_handler))
         .layer(from_fn_with_state(state.clone(), verify_chat))
         .route("/", get(list_chat_handler).post(create_chat_handler));
 
@@ -109,10 +109,10 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
         .allow_origin(cors::Any)
         .allow_headers(cors::Any);
     let api = Router::new()
-        // .route("/users", get(list_chat_users_handler))
+        .route("/users", get(list_chat_users_handler))
         .nest("/chats", chat)
-        // .route("/upload", post(upload_handler))
-        // .route("/files/:ws_id/*path", get(file_handler))
+        .route("/upload", post(upload_handler))
+        .route("/files/:ws_id/*path", get(file_handler))
         .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
         // routes doesn't need token verification
         .route("/signin", post(signin_handler))
