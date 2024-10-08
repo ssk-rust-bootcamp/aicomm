@@ -137,7 +137,7 @@ mod tests {
 
         // bad token in query params
         let req = Request::builder()
-            .uri(&format!("/?token=badtoken"))
+            .uri("/?token=badtoken")
             .body(Body::empty())?;
         let res = app.clone().oneshot(req).await?;
         assert_eq!(res.status(), StatusCode::FORBIDDEN);

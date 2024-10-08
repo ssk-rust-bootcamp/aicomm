@@ -91,7 +91,7 @@ impl AppState {
         )
         .bind(chat_id as i64)
         .bind(last_id as i64)
-        .bind(limit as i64)
+        .bind(limit)
         .fetch_all(&self.pool)
         .await?;
         Ok(messages)
