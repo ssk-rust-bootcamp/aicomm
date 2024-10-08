@@ -4,16 +4,15 @@ mod utils;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use thiserror::Error;
 pub use utils::*;
 use utoipa::ToSchema;
-use thiserror::Error;
 #[allow(async_fn_in_trait)]
-pub trait  Agent {
-    async  fn process(&self, msg: Message,ctx:&AgentContext)->Result<AgentDecision,AgentError>;
+pub trait Agent {
+    async fn process(&self, msg: Message, ctx: &AgentContext) -> Result<AgentDecision, AgentError>;
 }
 #[derive(Debug, Clone)]
-pub struct AgentContext {
-}
+pub struct AgentContext {}
 #[derive(Debug, Clone)]
 pub enum AgentDecision {
     Modify(String),

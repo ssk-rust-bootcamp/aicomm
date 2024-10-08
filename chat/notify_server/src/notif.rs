@@ -60,7 +60,7 @@ pub async fn setup_pg_listener(state: AppState) -> anyhow::Result<()> {
         Ok::<_, anyhow::Error>(())
     });
 
- Ok(())
+    Ok(())
 }
 
 impl Notification {
