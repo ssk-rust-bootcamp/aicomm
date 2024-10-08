@@ -10,8 +10,8 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": ">=2.0.0-rc.0",
-    "@tauri-apps/plugin-shell": ">=2.0.0-rc.0",
+    "@tauri-apps/api": ">=2.0.1",
+    "@tauri-apps/plugin-shell": ">=2.0.1",
     "axios": "^1.7.4",
     "jwt-decode": "^4.0.0",
     "vue": "^3.4.37",
@@ -19,7 +19,7 @@
     "vuex": "^4.0.2"
   },
   "devDependencies": {
-    "@tauri-apps/cli": ">=2.0.0-rc.0",
+    "@tauri-apps/cli": ">=2.0.1",
     "@vitejs/plugin-vue": "^5.0.5",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.41",
