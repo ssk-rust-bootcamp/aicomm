@@ -14,6 +14,7 @@ pub struct ServerTimeLayer;
 
 impl<S> Layer<S> for ServerTimeLayer {
     type Service = ServerTimeMiddleware<S>;
+
     fn layer(&self, inner: S) -> Self::Service {
         ServerTimeMiddleware { inner }
     }
@@ -30,9 +31,8 @@ where
     S::Future: Send + 'static,
 {
     type Response = S::Response;
-
     type Error = S::Error;
-
+    // `BoxFuture` is a type alias for `Pin<Box<dyn Future + Send + 'a>>`
     type Future =
         Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send + 'static>>;
 

@@ -4,18 +4,20 @@ mod server_time;
 
 use std::fmt;
 
+use crate::User;
+
+use self::{request_id::set_request_id, server_time::ServerTimeLayer};
 use axum::{middleware::from_fn, Router};
-use request_id::set_request_id;
-use server_time::ServerTimeLayer;
 use tower::ServiceBuilder;
 use tower_http::{
     compression::CompressionLayer,
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
+    LatencyUnit,
 };
 use tracing::Level;
 
-use crate::User;
 pub use auth::verify_token;
+
 pub trait TokenVerify {
     type Error: fmt::Debug;
     fn verify(&self, token: &str) -> Result<User, Self::Error>;
@@ -34,7 +36,7 @@ pub fn set_layer(app: Router) -> Router {
                     .on_response(
                         DefaultOnResponse::new()
                             .level(Level::INFO)
-                            .latency_unit(tower_http::LatencyUnit::Micros),
+                            .latency_unit(LatencyUnit::Micros),
                     ),
             )
             .layer(CompressionLayer::new().gzip(true).br(true).deflate(true))

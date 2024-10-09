@@ -148,6 +148,9 @@ Hello, World!
 GET http://localhost:6688/api/files/1/339/807/e635afbeab088ce33206fdf4223a6bb156.png
 Authorization: Bearer {{token}}
 
+### get files with token
+
+GET http://localhost:6688/api/files/1/339/807/e635afbeab088ce33206fdf4223a6bb156.png?token={{token}}
 
 ### send a message
 
@@ -166,40 +169,27 @@ GET http://localhost:6688/api/chats/1/messages?limit=6&last_id=5
 Authorization: Bearer {{token}}
 
 
-### use cloudflare AI
-
-POST https://api.cloudflare.com/client/v4/accounts/{{cfAccount}}/ai/run/@cf/meta/llama-3-8b-instruct
-Authorization: Bearer {{cfToken}}
-
-{
-    "messages": [
-        {
-            "role": "system",
-            "content": "You are a friendly assistant that answers questions based on your knowledge. Your reply will be limited to 100 words. reply with simplified Chinese, unless the question asks for a specific language."
-        },
-        {
-            "role": "user",
-            "content": "中国上最长的河流是哪条？"
-        }
-    ]
-}
-
-
-
 ### list chat agents
 
 GET http://localhost:6688/api/chats/1/agents
 Authorization: Bearer {{token}}
+
 ### create chat agent
-POST http://localhost:6688/api/chats/1/agents
+
+POST http://localhost:6688/api/chats/2/agents
 Authorization: Bearer {{token}}
 Content-Type: application/json
+
 {
-    "name": "agent5",
+    "name": "translator1",
     "type": "proxy",
-    "prompt": "You are a helpful assistant"
+    "adapter": "test",
+    "model": "gpt-4o",
+    "prompt": "You're the world's best translator. You understand English and Chinese well, also their culture and idioms. You will translate user input between English and Chinese. If the original text is English, you will translate it to elegant, authentic Simplified Chinese. If the original text is Chinese, you will translate it to elegant, authentic English. Only return the translated sentences, no other text or comments. below are the text to translate:"
 }
+
 ### update chat agent
+
 PATCH http://localhost:6688/api/chats/1/agents
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -208,4 +198,26 @@ Content-Type: application/json
     "id": 7,
     "prompt": "You are a helpful assistant",
     "args": {}
+}
+
+### send a chinese message
+
+POST http://localhost:6688/api/chats/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "content": "你好，今天工作辛苦了",
+    "files": []
+}
+
+### send a english message
+
+POST http://localhost:6688/api/chats/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+    "content": "Well done! You made great progress today.",
+    "files": []
 }

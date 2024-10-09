@@ -168,13 +168,14 @@ impl ChatServer {
             .header("Authorization", format!("Bearer {}", self.token))
             .header("Content-Type", "application/json")
             .body(
-                r#"{"name": "test agent", "type": "proxy", "prompt": "You are a helpful agent"}"#,
+                r#"{"name": "test agent", "type": "proxy", "adapter": "test", "model": "gpt-4o", "prompt": "You are a helpful agent"}"#,
             );
         let res = res.send().await?;
         assert_eq!(res.status(), StatusCode::CREATED);
         let agent: ChatAgent = res.json().await?;
         Ok(agent)
     }
+
     async fn create_message(&self, chat_id: u64) -> Result<Message> {
         // upload file
         let data = include_bytes!("../Cargo.toml");

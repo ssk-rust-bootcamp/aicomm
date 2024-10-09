@@ -43,47 +43,6 @@ pub struct AppStateInner {
     pub(crate) ek: EncodingKey,
     pub(crate) pool: PgPool,
 }
-impl fmt::Debug for AppStateInner {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("AppStateInner")
-            .field("config", &self.config)
-            .finish()
-    }
-}
-impl Deref for AppState {
-    type Target = AppStateInner;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-impl TokenVerify for AppState {
-    type Error = AppError;
-
-    fn verify(&self, token: &str) -> Result<User, Self::Error> {
-        Ok(self.dk.verify(token)?)
-    }
-}
-impl AppState {
-    pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
-        fs::create_dir_all(&config.server.base_dir)
-            .await
-            .context("Failed to create base directory")?;
-        let dk = DecodingKey::load(&config.auth.pk).context("load pk failed")?;
-        let ek = EncodingKey::load(&config.auth.sk).context("load sk failed")?;
-        let pool = PgPool::connect(&config.server.db_url)
-            .await
-            .context("Failed to connect to database")?;
-        Ok(Self {
-            inner: Arc::new(AppStateInner {
-                config,
-                dk,
-                ek,
-                pool,
-            }),
-        })
-    }
-}
 
 pub async fn get_router(state: AppState) -> Result<Router, AppError> {
     let chat = Router::new()
@@ -135,13 +94,57 @@ pub async fn get_router(state: AppState) -> Result<Router, AppError> {
     Ok(set_layer(app))
 }
 
+// 当我调用 state.config => state.inner.config
+impl Deref for AppState {
+    type Target = AppStateInner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl TokenVerify for AppState {
+    type Error = AppError;
+
+    fn verify(&self, token: &str) -> Result<User, Self::Error> {
+        Ok(self.dk.verify(token)?)
+    }
+}
+
+impl AppState {
+    pub async fn try_new(config: AppConfig) -> Result<Self, AppError> {
+        fs::create_dir_all(&config.server.base_dir)
+            .await
+            .context("create base_dir failed")?;
+        let dk = DecodingKey::load(&config.auth.pk).context("load pk failed")?;
+        let ek = EncodingKey::load(&config.auth.sk).context("load sk failed")?;
+        let pool = PgPool::connect(&config.server.db_url)
+            .await
+            .context("connect to db failed")?;
+        Ok(Self {
+            inner: Arc::new(AppStateInner {
+                config,
+                ek,
+                dk,
+                pool,
+            }),
+        })
+    }
+}
+
+impl fmt::Debug for AppStateInner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("AppStateInner")
+            .field("config", &self.config)
+            .finish()
+    }
+}
+
 #[cfg(feature = "test-util")]
 mod test_util {
-
-    use sqlx::Executor;
-    use sqlx_db_tester::TestPg;
-
     use super::*;
+    use sqlx::{Executor, PgPool};
+    use sqlx_db_tester::TestPg;
 
     impl AppState {
         pub async fn new_for_test() -> Result<(TestPg, Self), AppError> {
@@ -154,14 +157,15 @@ mod test_util {
             let state = Self {
                 inner: Arc::new(AppStateInner {
                     config,
-                    dk,
                     ek,
+                    dk,
                     pool,
                 }),
             };
             Ok((tdb, state))
         }
     }
+
     pub async fn get_test_pool(url: Option<&str>) -> (TestPg, PgPool) {
         let url = match url {
             Some(url) => url.to_string(),
@@ -169,7 +173,8 @@ mod test_util {
         };
         let tdb = TestPg::new(url, std::path::Path::new("../migrations"));
         let pool = tdb.get_pool().await;
-        // run prepared sql to insert test data
+
+        // run prepared sql to insert test dat
         let sql = include_str!("../fixtures/test.sql").split(';');
         let mut ts = pool.begin().await.expect("begin transaction failed");
         for s in sql {

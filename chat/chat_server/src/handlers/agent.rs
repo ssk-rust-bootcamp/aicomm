@@ -5,6 +5,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+
 /// List all agents in the chat.
 #[utoipa::path(
     get,
@@ -26,6 +27,7 @@ pub(crate) async fn list_agent_handler(
     let agents = state.list_agents(id as _).await?;
     Ok((StatusCode::OK, Json(agents)))
 }
+
 /// Create a new agent in the chat.
 #[utoipa::path(
     post,
@@ -48,6 +50,7 @@ pub(crate) async fn create_agent_handler(
     let agent = state.create_agent(input, id).await?;
     Ok((StatusCode::CREATED, Json(agent)))
 }
+
 /// Update the agent by id.
 #[utoipa::path(
     patch,

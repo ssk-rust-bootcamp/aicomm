@@ -1,12 +1,11 @@
 use std::{collections::HashSet, sync::Arc};
 
+use crate::AppState;
 use chat_core::{Chat, Message};
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgListener;
-use tokio_stream::StreamExt;
-use tracing::info;
-
-use crate::AppState;
+use tracing::{info, warn};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "event")]
@@ -16,11 +15,14 @@ pub enum AppEvent {
     RemoveFromChat(Chat),
     NewMessage(Message),
 }
+
 #[derive(Debug)]
 struct Notification {
+    // users being impacted, so we should send the notification to them
     user_ids: HashSet<u64>,
     event: Arc<AppEvent>,
 }
+
 // pg_notify('chat_updated', json_build_object('op', TG_OP, 'old', OLD, 'new', NEW)::text);
 #[derive(Debug, Serialize, Deserialize)]
 struct ChatUpdated {
@@ -33,7 +35,7 @@ struct ChatUpdated {
 #[derive(Debug, Serialize, Deserialize)]
 struct ChatMessageCreated {
     message: Message,
-    members: Vec<u64>,
+    members: Vec<i64>,
 }
 
 pub async fn setup_pg_listener(state: AppState) -> anyhow::Result<()> {
@@ -50,9 +52,9 @@ pub async fn setup_pg_listener(state: AppState) -> anyhow::Result<()> {
             let users = &state.users;
             for user_id in notification.user_ids {
                 if let Some(tx) = users.get(&user_id) {
-                    info!("Sending notification to user: {}", user_id);
+                    info!("Sending notification to user {}", user_id);
                     if let Err(e) = tx.send(notification.event.clone()) {
-                        info!("Failed to send notification to user {}: {}", user_id, e);
+                        warn!("Failed to send notification to user {}: {}", user_id, e);
                     }
                 }
             }
@@ -68,7 +70,7 @@ impl Notification {
         match r#type {
             "chat_updated" => {
                 let payload: ChatUpdated = serde_json::from_str(payload)?;
-                info!("Received chat_updated notification: {:?}", payload);
+                info!("ChatUpdated: {:?}", payload);
                 let user_ids =
                     get_affected_chat_user_ids(payload.old.as_ref(), payload.new.as_ref());
                 let event = match payload.op.as_str() {
@@ -84,9 +86,11 @@ impl Notification {
             }
             "chat_message_created" => {
                 let payload: ChatMessageCreated = serde_json::from_str(payload)?;
-                let user_ids = payload.members.into_iter().collect();
-                let event = Arc::new(AppEvent::NewMessage(payload.message));
-                Ok(Self { user_ids, event })
+                let user_ids = payload.members.iter().map(|v| *v as u64).collect();
+                Ok(Self {
+                    user_ids,
+                    event: Arc::new(AppEvent::NewMessage(payload.message)),
+                })
             }
             _ => Err(anyhow::anyhow!("Invalid notification type")),
         }

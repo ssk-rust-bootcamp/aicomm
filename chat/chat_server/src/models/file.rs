@@ -3,9 +3,9 @@ use std::{
     str::FromStr,
 };
 
+use crate::{AppError, ChatFile};
 use sha1::{Digest, Sha1};
 
-use crate::{AppError, ChatFile};
 impl ChatFile {
     pub fn new(ws_id: u64, filename: &str, data: &[u8]) -> Self {
         let hash = Sha1::digest(data);

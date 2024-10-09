@@ -1,3 +1,4 @@
+use crate::{AppEvent, AppState};
 use axum::{
     extract::State,
     response::{sse::Event, Sse},
@@ -10,8 +11,7 @@ use tokio::sync::broadcast;
 use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 use tracing::{debug, info};
 
-use crate::{AppEvent, AppState};
-const CHENNEL_CAPACITY: usize = 256;
+const CHANNEL_CAPACITY: usize = 256;
 
 pub(crate) async fn sse_handler(
     Extension(user): Extension<User>,
@@ -23,7 +23,7 @@ pub(crate) async fn sse_handler(
     let rx = if let Some(tx) = users.get(&user_id) {
         tx.subscribe()
     } else {
-        let (tx, rx) = broadcast::channel(CHENNEL_CAPACITY);
+        let (tx, rx) = broadcast::channel(CHANNEL_CAPACITY);
         state.users.insert(user_id, tx);
         rx
     };

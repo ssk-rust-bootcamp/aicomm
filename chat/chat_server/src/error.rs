@@ -1,8 +1,6 @@
-use axum::{
-    http::{Response, StatusCode},
-    response::IntoResponse,
-    Json,
-};
+use axum::http::StatusCode;
+use axum::response::Json;
+use axum::response::{IntoResponse, Response};
 use chat_core::AgentError;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -23,10 +21,13 @@ pub enum AppError {
 
     #[error("create agent error: {0}")]
     CreateAgentError(String),
+
     #[error("update agent error: {0}")]
     UpdateAgentError(String),
+
     #[error("user {user_id} is not member of chat {chat_id}")]
     NotChatMemberError { user_id: u64, chat_id: u64 },
+
     #[error("create message error: {0}")]
     CreateMessageError(String),
 
@@ -50,7 +51,7 @@ pub enum AppError {
 
     #[error("http header parse error: {0}")]
     HttpHeaderError(#[from] axum::http::header::InvalidHeaderValue),
-    
+
     #[error("ai agent error: {0}")]
     AiAgentError(#[from] AgentError),
 }
@@ -62,6 +63,7 @@ impl ErrorOutput {
         }
     }
 }
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response<axum::body::Body> {
         let status = match &self {
@@ -80,6 +82,7 @@ impl IntoResponse for AppError {
             Self::ChatFileError(_) => StatusCode::BAD_REQUEST,
             Self::AiAgentError(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
+
         (status, Json(ErrorOutput::new(self.to_string()))).into_response()
     }
 }

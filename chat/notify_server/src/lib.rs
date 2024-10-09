@@ -3,23 +3,26 @@ mod error;
 mod notif;
 mod sse;
 
-use std::{ops::Deref, sync::Arc};
-
 use axum::{
-    http::Method, middleware::from_fn_with_state, response::IntoResponse, routing::get, Router,
+    http::Method,
+    middleware::from_fn_with_state,
+    response::{Html, IntoResponse},
+    routing::get,
+    Router,
 };
-use axum_extra::response::Html;
 use chat_core::{
     middlewares::{verify_token, TokenVerify},
     DecodingKey, User,
 };
-pub use config::AppConfig;
 use dashmap::DashMap;
-pub use error::AppError;
-pub use notif::AppEvent;
 use sse::sse_handler;
+use std::{ops::Deref, sync::Arc};
 use tokio::sync::broadcast;
 use tower_http::cors::{self, CorsLayer};
+
+pub use config::AppConfig;
+pub use error::AppError;
+pub use notif::AppEvent;
 
 pub type UserMap = Arc<DashMap<u64, broadcast::Sender<Arc<AppEvent>>>>;
 
@@ -39,12 +42,13 @@ pub async fn get_router(config: AppConfig) -> anyhow::Result<Router> {
     notif::setup_pg_listener(state.clone()).await?;
 
     let cors = CorsLayer::new()
-        .allow_methods(vec![
+        // allow `GET` and `POST` when accessing the resource
+        .allow_methods([
             Method::GET,
             Method::POST,
-            Method::OPTIONS,
-            Method::PUT,
+            Method::PATCH,
             Method::DELETE,
+            Method::PUT,
         ])
         .allow_origin(cors::Any)
         .allow_headers(cors::Any);

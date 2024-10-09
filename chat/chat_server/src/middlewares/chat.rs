@@ -1,3 +1,4 @@
+use crate::{AppError, AppState};
 use axum::{
     extract::{FromRequestParts, Path, Request, State},
     middleware::Next,
@@ -5,16 +6,13 @@ use axum::{
 };
 use chat_core::User;
 
-use crate::{error::AppError, AppState};
-
 pub async fn verify_chat(State(state): State<AppState>, req: Request, next: Next) -> Response {
     let (mut parts, body) = req.into_parts();
-
     let Path(chat_id) = Path::<u64>::from_request_parts(&mut parts, &state)
         .await
         .unwrap();
-    let user = parts.extensions.get::<User>().unwrap();
 
+    let user = parts.extensions.get::<User>().unwrap();
     if !state
         .is_chat_member(chat_id, user.id as _)
         .await
@@ -26,6 +24,7 @@ pub async fn verify_chat(State(state): State<AppState>, req: Request, next: Next
         };
         return err.into_response();
     }
+
     let req = Request::from_parts(parts, body);
     next.run(req).await
 }

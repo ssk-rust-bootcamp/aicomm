@@ -1,3 +1,7 @@
+use crate::handlers::*;
+use crate::{
+    AppState, CreateChat, CreateMessage, CreateUser, ErrorOutput, ListMessages, SigninUser,
+};
 use axum::Router;
 use chat_core::{AgentType, Chat, ChatAgent, ChatType, ChatUser, Message, User, Workspace};
 use utoipa::{
@@ -7,14 +11,6 @@ use utoipa::{
 use utoipa_rapidoc::RapiDoc;
 use utoipa_redoc::{Redoc, Servable};
 use utoipa_swagger_ui::SwaggerUi;
-
-use crate::handlers::*;
-use crate::{
-    error::ErrorOutput,
-    handlers::AuthOutput,
-    models::{CreateChat, CreateMessage, CreateUser, ListMessages, SigninUser},
-    AppState,
-};
 
 pub(crate) trait OpenApiRouter {
     fn openapi(self) -> Self;
