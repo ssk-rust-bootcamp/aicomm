@@ -1,3 +1,4 @@
+mod agent;
 mod chat;
 mod file;
 mod messages;
@@ -6,6 +7,7 @@ mod workspace;
 
 pub use chat::CreateChat;
 pub use messages::{CreateMessage, ListMessages};
+pub use agent::{CreateAgent, UpdateAgent};
 use serde::{Deserialize, Serialize};
 pub use user::{CreateUser, SigninUser};
 

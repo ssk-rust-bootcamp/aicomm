@@ -1,12 +1,9 @@
-use std::str::FromStr;
-
-use chat_core::Message;
+use crate::{agent::AgentVariant, AppError, AppState, ChatFile};
+use chat_core::{Agent, AgentContext, AgentDecision, ChatType, Message};
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+use tracing::warn;
 use utoipa::{IntoParams, ToSchema};
-
-use crate::{error::AppError, AppState};
-
-use super::ChatFile;
 
 #[derive(Debug, Clone, ToSchema, Serialize, Deserialize)]
 pub struct CreateMessage {
@@ -38,7 +35,7 @@ impl AppState {
                 "Content cannot be empty".to_string(),
             ));
         }
-        // verify files exist
+
         // verify files exist
         for s in &input.files {
             let file = ChatFile::from_str(s)?;
@@ -50,20 +47,68 @@ impl AppState {
             }
         }
 
+        // if we have agent, apply it and get the result
+        let mut agents = self.list_agents(chat_id).await?;
+        let decision = if let Some(agent) = agents.pop() {
+            let agent: AgentVariant = agent.into();
+            agent
+                .process(&input.content, &AgentContext::default())
+                .await?
+        } else {
+            AgentDecision::None
+        };
+
+        let modified_content = match decision {
+            AgentDecision::Modify(ref s) => Some(s),
+            _ => None,
+        };
+
         // create message
         let message: Message = sqlx::query_as(
             r#"
-          INSERT INTO messages (chat_id, sender_id, content, files)
-          VALUES ($1, $2, $3, $4)
-          RETURNING id, chat_id, sender_id, content, files, created_at
+          INSERT INTO messages (chat_id, sender_id, content, modified_content, files)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING *
           "#,
         )
         .bind(chat_id as i64)
         .bind(user_id as i64)
         .bind(input.content)
+        .bind(modified_content)
         .bind(&input.files)
         .fetch_one(&self.pool)
         .await?;
+
+        // if decision is reply, create a new message
+        if let AgentDecision::Reply(reply) = decision {
+            let chat = self
+                .get_chat_by_id(chat_id)
+                .await?
+                .expect("chat should exist");
+            if chat.r#type != ChatType::Single {
+                warn!(
+                    "reply decision found in non single chat {}. reply: {}",
+                    chat_id, reply
+                );
+            }
+            let other_user_id = chat
+                .members
+                .into_iter()
+                .find(|m| m != &(user_id as i64))
+                .expect("other user should exist");
+            let _: (i64,) = sqlx::query_as(
+                r#"
+              INSERT INTO messages (chat_id, sender_id, content)
+              VALUES ($1, $2, $3)
+              RETURNING id
+              "#,
+            )
+            .bind(chat_id as i64)
+            .bind(other_user_id)
+            .bind(reply)
+            .fetch_one(&self.pool)
+            .await?;
+        }
 
         Ok(message)
     }
@@ -80,20 +125,22 @@ impl AppState {
             _ => 100,
         };
 
-        let messages = sqlx::query_as(
+        let messages: Vec<Message> = sqlx::query_as(
             r#"
-            SELECT id, chat_id, sender_id, content, files, created_at
-            FROM messages
-            where chat_id = $1 and id < $2
-            order by id desc
-            limit $3
-            "#,
+        SELECT id, chat_id, sender_id, content, modified_content, files, created_at
+        FROM messages
+        WHERE chat_id = $1
+        AND id < $2
+        ORDER BY id DESC
+        LIMIT $3
+        "#,
         )
         .bind(chat_id as i64)
         .bind(last_id as i64)
         .bind(limit)
         .fetch_all(&self.pool)
         .await?;
+
         Ok(messages)
     }
 }
@@ -107,18 +154,24 @@ mod tests {
     async fn create_message_should_work() -> Result<()> {
         let (_tdb, state) = AppState::new_for_test().await?;
         let input = CreateMessage {
-            content: "hello world".to_string(),
+            content: "hello".to_string(),
             files: vec![],
         };
-        let message = state.create_message(input, 1, 1).await?;
-        assert_eq!(message.content, "hello world");
+        let message = state
+            .create_message(input, 1, 1)
+            .await
+            .expect("create message failed");
+        assert_eq!(message.content, "hello");
+
         // invalid files should fail
         let input = CreateMessage {
-            content: "hello world".to_string(),
+            content: "hello".to_string(),
             files: vec!["1".to_string()],
         };
+
         let err = state.create_message(input, 1, 1).await.unwrap_err();
         assert_eq!(err.to_string(), "Invalid chat file path: 1");
+
         // valid files should work
         let url = upload_dummy_file(&state)?;
         let input = CreateMessage {
@@ -137,15 +190,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn list_message_should_work() -> Result<()> {
+    async fn list_messages_should_work() -> Result<()> {
         let (_tdb, state) = AppState::new_for_test().await?;
         let input = ListMessages {
             last_id: None,
             limit: 6,
         };
+
         let messages = state.list_messages(input, 1).await?;
         assert_eq!(messages.len(), 6);
-        let last_id = messages.last().expect("last message should exist").id;
+
+        let last_id = messages.last().expect("last message should exists").id;
 
         let input = ListMessages {
             last_id: Some(last_id as _),
